@@ -1,0 +1,64 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>smoke test</title>
+<link rel="stylesheet" href="../css/style.css">
+<!-- Run:  node tools/smoke.js   (starts headless Chrome on this page and prints a report) -->
+</head><body>
+<pre id="out">running...</pre>
+<script src="../js/util.js"></script>
+<script src="../js/highlight.js"></script>
+<script src="../js/codeview.js"></script>
+<script src="../js/sources-data.js"></script>
+<script src="../js/kinds/diagram.js"></script><script src="../js/kinds/lanes.js"></script><script src="../js/kinds/iters.js"></script>
+<script src="../js/kinds/cudagrid.js"></script><script src="../js/kinds/matmul.js"></script><script src="../js/kinds/reduce.js"></script>
+<script src="../js/kinds/mem.js"></script><script src="../js/kinds/gantt.js"></script><script src="../js/kinds/trace.js"></script><script src="../js/kinds/conv.js"></script>
+<script src="../js/examples/_courses.js"></script>
+<script src="../js/examples/pthreads.js"></script><script src="../js/examples/openmp.js"></script><script src="../js/examples/openmp_offload.js"></script>
+<script src="../js/examples/mpi.js"></script><script src="../js/examples/cuda_basics.js"></script><script src="../js/examples/cuda_matmul.js"></script>
+<script src="../js/examples/cuda_advanced.js"></script><script src="../js/examples/debugging.js"></script><script src="../js/examples/dnn.js"></script>
+<script src="../js/examples/hpml_cuda.js"></script><script src="../js/examples/hpml_ml.js"></script>
+<script>
+(function () {
+  var report = { examples: 0, steps: 0, problems: [], perExample: [], warn: [] };
+  var seen = {};
+  var courseTopics = {};
+  PDC.courses.forEach(function (c) { courseTopics[c.id] = {}; c.topics.forEach(function (t) { courseTopics[c.id][t.id] = true; }); });
+  PDC.examples.forEach(function (ex) {
+    var key = ex.course + '/' + ex.topic + '/' + ex.id, errs = [];
+    if (seen[key]) errs.push('duplicate id');
+    seen[key] = true;
+    if (!courseTopics[ex.course] || !courseTopics[ex.course][ex.topic]) errs.push('unknown course/topic');
+    if (!ex.title || !ex.summary) errs.push('missing title/summary');
+    try {
+      var files = PDC.loadFiles(ex.files);
+      files.forEach(function (f) { if (f.missing) errs.push('source missing: ' + f.path); });
+      var kind = PDC.kinds[ex.kind];
+      if (!kind) throw new Error('unknown kind ' + ex.kind);
+      if (!ex.steps || !ex.steps.length) throw new Error('no steps');
+      var host = document.createElement('div'); document.body.appendChild(host);
+      var eng = kind.create(host, ex.scene || {}, ex.steps);
+      ex.steps.forEach(function (s, i) {
+        report.steps++;
+        try { eng.render(i); if (!host.innerHTML.trim()) errs.push('step ' + (i + 1) + ': empty render'); }
+        catch (e) { errs.push('step ' + (i + 1) + ' render: ' + e.message); }
+        /* layout check (diagram engine): text wider than the box that holds it */
+        if (ex.kind === 'diagram') {
+          host.querySelectorAll('g.node').forEach(function (g) {
+            const body = g.querySelector('.body'); if (!body || g.classList.contains('text')) return;
+            const bw = body.getBBox().width;
+            g.querySelectorAll(':scope > text').forEach(function (t) { const w = t.getBBox().width; if (w > bw - 6) report.warn.push(ex.id + ': "' + t.textContent.slice(0, 40) + '" is ' + Math.round(w) + 'px in a ' + Math.round(bw) + 'px node'); });
+            g.querySelectorAll('g.cell').forEach(function (c) { const r = c.querySelector('rect').getBBox().width, w = c.querySelector('text').getBBox().width; if (w > r - 3) report.warn.push(ex.id + ': cell "' + c.textContent.slice(0, 20) + '" is ' + Math.round(w) + 'px in a ' + Math.round(r) + 'px cell'); });
+          });
+        }
+        if (!s.say) errs.push('step ' + (i + 1) + ': no caption');
+        if (!s.t) errs.push('step ' + (i + 1) + ': no title');
+        if (s.code) { var r = PDC.resolveCode(s.code, files); r.misses.forEach(function (m) { errs.push('step ' + (i + 1) + ' code not found: ' + JSON.stringify(m)); }); }
+      });
+      if (eng.destroy) eng.destroy();
+      host.remove();
+    } catch (e) { errs.push('fatal: ' + e.message); }
+    report.examples++;
+    if (errs.length) report.problems.push({ ex: key, errs: errs });
+  });
+  document.getElementById('out').textContent = 'SMOKE_JSON:' + JSON.stringify(report) + ':END';
+})();
+</script></body></html>

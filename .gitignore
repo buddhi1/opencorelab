@@ -1,0 +1,35 @@
+# OS and editor files
+.DS_Store
+Thumbs.db
+desktop.ini
+*.swp
+*~
+.idea/
+.vscode/
+
+# Claude Code files (instructions, settings, local memory)
+CLAUDE.md
+CLAUDE.local.md
+**/CLAUDE.md
+**/CLAUDE.local.md
+.claude/
+**/.claude/
+.claude.json
+.mcp.json
+
+# Node / Python leftovers from the tools/ scripts (the site itself has no dependencies)
+node_modules/
+npm-debug.log*
+__pycache__/
+*.pyc
+
+# Test and scratch output
+*.log
+tmp/
+.tmp/
+
+# Local secrets, if any are ever added (the Apps Script URL in js/feedback-config.js is public by design)
+.env
+.env.*
+.clasp.json
+.clasprc.json

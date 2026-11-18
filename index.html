@@ -1,0 +1,92 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Open Core Lab</title>
+<meta name="description" content="Open Core Lab: step-by-step animations that explain every code example in the PDC (Parallel and Distributed Computing) and HPML (High-Performance Machine Learning) courses, linked line by line to the source.">
+<meta name="theme-color" content="#000000">
+<link rel="icon" href="img/favicon.svg" type="image/svg+xml">
+<link rel="icon" href="img/favicon.ico" sizes="48x48">
+<link rel="icon" href="img/favicon-32.png" sizes="32x32" type="image/png">
+<link rel="icon" href="img/favicon-16.png" sizes="16x16" type="image/png">
+<link rel="apple-touch-icon" href="img/apple-touch-icon.png">
+<link rel="manifest" href="img/site.webmanifest">
+<meta property="og:title" content="Open Core Lab">
+<meta property="og:description" content="Parallel computing for all: every code example animated step by step, linked to the source.">
+<meta property="og:image" content="img/og-image.png">
+<meta name="twitter:card" content="summary_large_image">
+<script>
+  // Apply the saved (or system) theme before first paint to avoid a flash.
+  (function () {
+    var t = null, m = /[?&]theme=(dark|light)/.exec(location.search);
+    try { t = m ? m[1] : localStorage.getItem('pdc-theme'); } catch (e) { t = m ? m[1] : null; }
+    if (!t) t = window.matchMedia && matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+    document.documentElement.setAttribute('data-theme', t);
+  })();
+</script>
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+
+<header class="topbar">
+  <button id="sb-toggle" class="icon-btn" type="button" aria-label="Hide or show the navigation sidebar" aria-controls="sidebar" aria-expanded="true" title="Toggle sidebar  ( [ )">
+    <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path d="M3 6h18M3 12h18M3 18h18" stroke="currentColor" stroke-width="2" stroke-linecap="round" fill="none"/></svg>
+  </button>
+  <a class="brand" href="#/" aria-label="Open Core Lab, home"><img class="logo" src="img/ocl-mark-small.svg" alt="" width="34" height="34"><span class="wordmark">Open <b>C</b>ore Lab</span><span class="tagline">Parallel computing for all</span></a>
+  <span class="spacer"></span>
+  <a class="top-link" href="#/about">About</a>
+  <a class="top-link" href="#/feedback">Feedback</a>
+  <a class="top-link" id="gh-link" href="https://github.com/buddhi1/opencorelab" target="_blank" rel="noopener">GitHub &#8599;</a>
+  <button id="theme-toggle" class="icon-btn" type="button" aria-label="Switch between light and dark theme" title="Toggle theme">
+    <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg>
+  </button>
+</header>
+
+<div class="shell">
+  <nav id="sidebar" class="sidebar" aria-label="Examples">
+    <div class="sb-search">
+      <input id="sb-filter" type="search" placeholder="Filter examples&hellip;" aria-label="Filter examples" autocomplete="off">
+    </div>
+    <div id="sb-tree" class="sb-tree"></div>
+    <div class="sb-foot"><span id="sb-progress"></span><span class="sb-links"><a href="#/about">About</a><a href="#/feedback">Feedback</a><a href="#/privacy">Privacy &amp; data</a></span></div>
+  </nav>
+  <div id="sb-backdrop" class="backdrop" hidden></div>
+  <main id="main" class="main" tabindex="-1"></main>
+</div>
+
+<noscript><p style="padding:2rem">This site needs JavaScript to run the animations.</p></noscript>
+
+<script src="js/util.js"></script>
+<script src="js/highlight.js"></script>
+<script src="js/codeview.js"></script>
+<script src="js/sources-data.js"></script>
+<script src="js/kinds/diagram.js"></script>
+<script src="js/kinds/lanes.js"></script>
+<script src="js/kinds/iters.js"></script>
+<script src="js/kinds/cudagrid.js"></script>
+<script src="js/kinds/matmul.js"></script>
+<script src="js/kinds/reduce.js"></script>
+<script src="js/kinds/mem.js"></script>
+<script src="js/kinds/gantt.js"></script>
+<script src="js/kinds/trace.js"></script>
+<script src="js/kinds/conv.js"></script>
+<script src="js/examples/_courses.js"></script>
+<script src="js/examples/pthreads.js"></script>
+<script src="js/examples/openmp.js"></script>
+<script src="js/examples/openmp_offload.js"></script>
+<script src="js/examples/mpi.js"></script>
+<script src="js/examples/cuda_basics.js"></script>
+<script src="js/examples/cuda_matmul.js"></script>
+<script src="js/examples/cuda_advanced.js"></script>
+<script src="js/examples/debugging.js"></script>
+<script src="js/examples/dnn.js"></script>
+<script src="js/examples/hpml_cuda.js"></script>
+<script src="js/examples/hpml_ml.js"></script>
+<script src="js/feedback-questions.js"></script>
+<script src="js/feedback-config.js"></script>
+<script src="js/feedback.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>

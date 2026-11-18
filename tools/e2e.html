@@ -1,0 +1,193 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><title>e2e</title>
+<!-- Run:  node tools/e2e.js   - drives the real app (routing, stepping, keyboard, code-line clicks, sidebar, search) in headless Chrome. -->
+<link rel="stylesheet" href="../css/style.css"></head>
+<body>
+<header class="topbar"><button id="sb-toggle" class="icon-btn" type="button" aria-expanded="true">=</button><a class="brand" href="#/"></a><button id="theme-toggle" class="icon-btn" type="button">t</button></header>
+<div class="shell"><nav id="sidebar" class="sidebar"><div class="sb-search"><input id="sb-filter" type="search"></div><div id="sb-tree" class="sb-tree"></div><div class="sb-foot"><span id="sb-progress"></span></div></nav><div id="sb-backdrop" class="backdrop" hidden></div><main id="main" class="main" tabindex="-1"></main></div>
+<pre id="e2e-out">running</pre>
+<script>window.__errors = []; window.addEventListener('error', function (e) { window.__errors.push(String(e.message)); });</script>
+<script src="../js/util.js"></script><script src="../js/highlight.js"></script><script src="../js/codeview.js"></script><script src="../js/sources-data.js"></script>
+<script src="../js/kinds/diagram.js"></script><script src="../js/kinds/lanes.js"></script><script src="../js/kinds/iters.js"></script><script src="../js/kinds/cudagrid.js"></script><script src="../js/kinds/matmul.js"></script>
+<script src="../js/kinds/reduce.js"></script><script src="../js/kinds/mem.js"></script><script src="../js/kinds/gantt.js"></script><script src="../js/kinds/trace.js"></script><script src="../js/kinds/conv.js"></script>
+<script src="../js/examples/_courses.js"></script><script src="../js/examples/pthreads.js"></script><script src="../js/examples/openmp.js"></script><script src="../js/examples/openmp_offload.js"></script>
+<script src="../js/examples/mpi.js"></script><script src="../js/examples/cuda_basics.js"></script><script src="../js/examples/cuda_matmul.js"></script><script src="../js/examples/cuda_advanced.js"></script>
+<script src="../js/examples/debugging.js"></script><script src="../js/examples/dnn.js"></script><script src="../js/examples/hpml_cuda.js"></script><script src="../js/examples/hpml_ml.js"></script>
+<script>
+  /* start every run as a first-time visitor, and capture posts instead of sending them */
+  try { Object.keys(localStorage).forEach(function (k) { if (/^ocl-/.test(k)) localStorage.removeItem(k); }); } catch (e) { /* no storage */ }
+  window.__posts = [];
+  window.fetch = function (url, opt) { window.__posts.push(JSON.parse(opt.body)); return Promise.resolve({ json: function () { return Promise.resolve({ ok: true }); } }); };
+</script>
+<script src="../js/feedback-questions.js"></script><script src="../js/feedback-config.js"></script>
+<script>PDC.FEEDBACK.endpoint = 'https://script.google.com/macros/s/e2e-test/exec';</script>
+<script src="../js/feedback.js"></script>
+<script src="../js/app.js"></script>
+<script>
+(function () {
+  try { run(); } catch (err) { window.__fatal = String(err && err.stack || err); document.getElementById('e2e-out').textContent = ['E2E', 'JSON:'].join('') + JSON.stringify([{ name: 'harness crashed', pass: false, info: window.__fatal }]) + ':' + 'END'; }
+  function run() {
+  const res = [], ok = function (name, cond, info) { res.push({ name: name, pass: !!cond, info: info === undefined ? '' : String(info) }); document.getElementById('e2e-out').textContent = 'running after: ' + name; };
+  const $ = function (s) { return document.querySelector(s); };
+  const pill = function () { return $('#step-pill') ? $('#step-pill').textContent : ''; };
+  const go = function (h) { history.replaceState(null, '', h); PDC.router.route(); };   // replaceState: no hashchange event, so the page renders exactly once
+  const key = function (k) { document.dispatchEvent(new KeyboardEvent('keydown', { key: k, bubbles: true })); };
+
+  /* 1. routing + stepping */
+  go('#/pdc/pthreads/4-mutex');
+  ok('example page renders', $('#anim-host') && $('#anim-host').children.length > 0, pill());
+  ok('starts at step 1', /^1 \//.test(pill()), pill());
+  $('#b-next').click(); ok('next button advances', /^2 \//.test(pill()), pill());
+  key('ArrowRight'); ok('ArrowRight advances', /^3 \//.test(pill()), pill());
+  key('ArrowLeft'); ok('ArrowLeft goes back', /^2 \//.test(pill()), pill());
+  $('#b-last').click(); ok('last button', new RegExp('^' + (PDC_PLAYER.i + 1) + ' / ' + (PDC_PLAYER.i + 1)).test(pill()), pill());
+  $('#b-first').click(); ok('restart button', /^1 \//.test(pill()), pill());
+
+  /* 2. code highlighting + click-to-jump */
+  PDC_PLAYER.go(3, true);
+  const hl = document.querySelectorAll('.cv-table tr.hl');
+  ok('highlighted code lines for step 4', hl.length > 0, hl.length);
+  PDC_PLAYER.go(0, true);
+  const hl0 = document.querySelector('.cv-table tr.hl');
+  PDC_PLAYER.go(4, true);
+  const target = document.querySelector('.cv-table tr.hl');
+  if (target) { target.querySelector('.src').dispatchEvent(new MouseEvent('click', { bubbles: true })); }
+  ok('clicking a highlighted line jumps to a step that explains it', target && PDC_PLAYER.i <= 4, 'now at step ' + (PDC_PLAYER.i + 1));
+
+  /* 3. autoplay (virtual time), then the rest of the checks run from its callback */
+  PDC_PLAYER.go(0, true);
+  $('#b-play').click(); ok('play starts', PDC_PLAYER.playing, '');
+  const pl = PDC_PLAYER, startAt = pl.i; window.__t0 = performance.now();
+  setTimeout(function () {
+    ok('autoplay advanced a step', pl.i > startAt, 'step index ' + pl.i + ', playing=' + pl.playing + ', speed=' + pl.speed + ', t=' + Math.round(performance.now()));
+    pl.pause(); ok('pause stops autoplay', !pl.playing, '');
+    rest();
+  }, 3200);
+
+  function rest() {
+    /* 4. sidebar toggle + filter */
+    const wasOpen = !document.body.classList.contains('sb-closed');
+    $('#sb-toggle').click(); ok('sidebar hides', document.body.classList.contains('sb-closed') === wasOpen);
+    $('#sb-toggle').click(); ok('sidebar shows again', document.body.classList.contains('sb-closed') !== wasOpen);
+    const f = $('#sb-filter'); f.value = 'bank'; f.dispatchEvent(new Event('input'));
+    ok('filter finds "bank" examples', document.querySelectorAll('.sb-ex').length >= 1 && /bank/i.test(document.querySelector('.sb-ex').textContent), document.querySelectorAll('.sb-ex').length);
+    f.value = ''; f.dispatchEvent(new Event('input'));
+    key('['); ok('"[" shortcut toggles the sidebar', document.body.classList.contains('sb-closed') === wasOpen); key('[');
+
+    /* 5. every route */
+    const bad = [];
+    PDC.examples.forEach(function (e) {
+      try {
+        go('#/' + e.course + '/' + e.topic + '/' + e.id);
+        if (!$('#anim-host') || !$('#anim-host').children.length) bad.push(e.id + ': empty animation');
+        if (!$('#caption').textContent.trim()) bad.push(e.id + ': empty caption');
+        if (e.files.length && !$('.cv-table tr')) bad.push(e.id + ': no code rows');
+        PDC_PLAYER.go(PDC_PLAYER.i + 1 < e.steps.length ? e.steps.length - 1 : 0, true);   // also render the last step through the real player
+        if (!$('#anim-host').children.length) bad.push(e.id + ': empty last step');
+      } catch (err) { bad.push(e.id + ': ' + err.message); }
+    });
+    ok('all ' + PDC.examples.length + ' example pages load (first and last step)', bad.length === 0, bad.slice(0, 5).join(' | '));
+    ['#/', '#/about', '#/pdc', '#/hpml', '#/pdc/mpi', '#/hpml/tensorflow'].forEach(function (h) { try { go(h); ok('route ' + h, $('#main').innerHTML.length > 200); } catch (err) { ok('route ' + h, false, err.message); } });
+    go('#/nonsense'); ok('unknown route shows "Not found"', /Not found/.test($('#main').textContent));
+    feedback(function () {
+      ok('no uncaught errors', window.__errors.length === 0, window.__errors.join(' | '));
+      finish();
+    });
+  }
+
+  /* 6. consent + feedback (each step runs 100 ms after the last, so queued posts have resolved) */
+  function feedback(done) {
+    const posted = function (type, pred) {
+      return window.__posts.some(function (b) { return b.records.some(function (r) { return r.type === type && (!pred || pred(r)); }); });
+    };
+    const pick = function (sel) { const i = document.querySelector(sel); i.checked = true; i.dispatchEvent(new Event('change', { bubbles: true })); };
+    const lastStep = function () { $('#b-last').click(); };
+    const ex2 = PDC.examples.find(function (e) { return e.steps.length >= 4 && e.id !== '4-mutex'; });
+    const ex2key = ex2.course + '/' + ex2.topic + '/' + ex2.id;
+    const steps = [
+      function () {
+        ok('consent dialog shows on first visit', !!$('.fb-overlay .fb-dialog'));
+        ok('nothing is recorded before the student chooses', PDC.fb.queue().length === 0 && window.__posts.length === 0, PDC.fb.queue().length);
+        $('.fb-dialog [data-mode="none"]').click();
+      },
+      function () {
+        ok('"No thanks" closes the dialog', !$('.fb-overlay'));
+        ok('"No thanks" sends one anonymous declined marker', posted('consent', function (r) { return r.choice === 'declined' && !r.anonId && !r.sid; }));
+        go('#/pdc/pthreads/4-mutex'); lastStep();
+        ok('declined: no feedback card', !$('#fb-card'));
+        go('#/');
+        ok('declined: no usage recorded', !posted('visit') && !posted('session') && PDC.fb.queue().length === 0);
+        PDC.fb.openConsent();
+        $('.fb-dialog [data-act="age"]').click();
+        ok('"Under 18?" reveals the age options', !$('.fb-age').hidden);
+        pick('input[name="fb-age"][value="under13"]');
+        ok('under 13: both sharing options are disabled', $('[data-mode="full"]').disabled && $('[data-mode="feedback"]').disabled);
+        pick('input[name="fb-age"][value="13-17"]');
+        ok('13-17: only "feedback I send" is allowed', $('[data-mode="full"]').disabled && !$('[data-mode="feedback"]').disabled);
+        $('[data-mode="feedback"]').click();
+      },
+      function () {
+        ok('feedback-only consent has the age group but no id', posted('consent', function (r) { return r.choice === 'feedback' && r.age === '13-17' && !r.anonId; }));
+        go('#/pdc/pthreads/4-mutex');
+        ok('feedback card stays hidden before the last step', $('#fb-card') && $('#fb-card').hidden);
+        lastStep();
+        ok('feedback card appears at the last step', $('#fb-card') && !$('#fb-card').hidden);
+        $('#fb-card form').requestSubmit();
+        ok('an empty card is not sent', /at least one/i.test($('#fb-card .fb-status').textContent));
+        pick('#fb-card input[name="fbx-helpful"][value="4"]');
+        $('#fb-card form').requestSubmit();
+      },
+      function () {
+        ok('rating is sent with page and age, no id', posted('feedback', function (r) { return r.page === 'pdc/pthreads/4-mutex' && r.helpful === 4 && r.age === '13-17' && !r.anonId; }));
+        ok('feedback-only: no usage records', !posted('visit') && !posted('session'));
+        PDC.fb.openConsent();
+        $('[data-mode="full"]').click();
+      },
+      function () {
+        ok('"Sure" records consent with an anonymous id', posted('consent', function (r) { return r.choice === 'full' && r.age === '18+' && /^[0-9a-f]{16}$/.test(r.anonId); }));
+        ok('"Sure" records a coarse device summary', posted('session', function (r) { return r.browser && r.os && r.form && 'timezone' in r && !('userAgent' in r); }));
+        ok('the optional profile follows', !!$('.fb-dialog .fb-form'));
+        pick('.fb-dialog input[value="Undergraduate"]');
+        $('.fb-dialog form').requestSubmit();
+      },
+      function () {
+        ok('profile answers are sent with the id', posted('profile', function (r) { return r.level === 'Undergraduate' && r.anonId; }));
+        ok('profile closes the dialog', !$('.fb-overlay'));
+        go('#/' + ex2key); key('ArrowRight'); key('ArrowRight'); go('#/');
+        ok('leaving an example queues a visit with steps viewed', PDC.fb.queue().some(function (r) { return r.type === 'visit' && r.page === ex2key && r.stepsSeen === 3 && r.steps === ex2.steps.length; }),
+          JSON.stringify(PDC.fb.queue().filter(function (r) { return r.type === 'visit'; })));
+        go('#/pdc/pthreads/4-mutex'); lastStep();
+        ok('an example already rated does not ask again', !$('#fb-card'));
+        go('#/feedback');
+        ok('survey page shows every question', document.querySelectorAll('.fb-survey .fb-q').length === PDC.FEEDBACK_QUESTIONS.survey.questions.length);
+        document.querySelector('.fb-survey input[name="fbs-best"]').value = 'MPI ring';
+        pick('.fb-survey input[name="fbs-features"][value="Autoplay"]');
+        $('.fb-survey').requestSubmit();
+      },
+      function () {
+        ok('survey answers are sent', posted('survey', function (r) { return r.best === 'MPI ring' && r.features === 'Autoplay' && r.anonId; }));
+        ok('queued visits are sent with the survey', posted('visit', function (r) { return r.page === ex2key; }));
+        go('#/privacy');
+        ok('privacy page shows the current choice', /sharing usage info and feedback/i.test($('#main').textContent));
+        const del = $('[data-act="delete"]'); del.click();
+        ok('delete asks for a second click', /again/i.test(del.textContent));
+        del.click();
+      },
+      function () {
+        ok('delete sends a withdraw request with the id', posted('withdraw', function (r) { return /^[0-9a-f]{16}$/.test(r.anonId); }));
+        ok('after delete the id is gone and sharing is off', !localStorage.getItem('ocl-anon-id') && PDC.fb.mode() === 'none');
+        ok('privacy page updates after delete', /not sharing any data/i.test($('#main').textContent));
+      }
+    ];
+    let i = 0;
+    (function next() {
+      if (i >= steps.length) { done(); return; }
+      try { steps[i++](); } catch (err) { ok('feedback step ' + i + ' crashed', false, err.message); }
+      setTimeout(next, 100);
+    })();
+  }
+
+  function finish() { document.getElementById('e2e-out').textContent = ['E2E', 'JSON:'].join('') + JSON.stringify(res) + ':' + 'END'; }
+  }
+})();
+</script></body></html>

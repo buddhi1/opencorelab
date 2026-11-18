@@ -1,0 +1,9 @@
+# Normalise line endings so diffs stay clean across Linux, macOS and Windows.
+* text=auto eol=lf
+
+*.png binary
+*.ico binary
+
+# Generated files: collapse them in GitHub diffs and keep them out of language stats.
+js/sources-data.js    linguist-generated=true
+feedback-backend/Form.gs linguist-generated=true
