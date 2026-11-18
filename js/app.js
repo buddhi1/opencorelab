@@ -38,6 +38,30 @@
     emit('ui', { action: 'theme' });
   });
 
+  /* Scaled SVG scenes are drawn 700-800 units wide, so on a phone their text would shrink to ~5px.
+     Record each one's natural width in --vbw; on narrow screens the CSS keeps it at least 60% of that
+     and the animation box scrolls sideways instead. (Lanes have a fixed pixel width and scroll already.) */
+  function tagSvgWidths(host) {
+    host.querySelectorAll('svg[viewBox]:not(.ln)').forEach(function (svg) {
+      const vb = svg.viewBox && svg.viewBox.baseVal;
+      if (vb && vb.width) svg.style.setProperty('--vbw', vb.width);
+    });
+  }
+
+  /* ---------- site menu: on narrow screens the header links fold into a drop-down ---------- */
+  const navBtn = $('#nav-toggle'), nav = $('#top-nav');
+  function setNav(open) {
+    if (!navBtn || !nav) return;
+    nav.classList.toggle('open', open);
+    navBtn.setAttribute('aria-expanded', open ? 'true' : 'false');
+  }
+  if (navBtn && nav) {
+    navBtn.addEventListener('click', function (ev) { ev.stopPropagation(); setNav(!nav.classList.contains('open')); });
+    nav.addEventListener('click', function (ev) { if (ev.target.closest('a')) setNav(false); });
+    document.addEventListener('click', function (ev) { if (!nav.contains(ev.target)) setNav(false); });
+    document.addEventListener('keydown', function (ev) { if (ev.key === 'Escape') setNav(false); });
+  }
+
   /* ---------- sidebar ---------- */
   const sidebar = $('#sidebar'), backdrop = $('#sb-backdrop'), toggleBtn = $('#sb-toggle');
   const isNarrow = function () { return window.matchMedia('(max-width: 900px)').matches; };
@@ -301,6 +325,7 @@
         this.i = i;
         const s = steps[i];
         eng.render(i);
+        tagSvgWidths(host);
         $('#step-pill').textContent = (i + 1) + ' / ' + steps.length;
         $('#step-title').textContent = s.t || '';
         $('#caption').innerHTML = s.say || '';
@@ -365,6 +390,9 @@
   /* ---------- router ---------- */
   function route() {
     if (cleanup) { cleanup(); cleanup = null; }
+    /* on a phone the sidebar covers the page, so close it (and the menu) once a link is followed */
+    setNav(false);
+    if (isNarrow() && sidebarOpen()) setSidebar(false, false);
     let parts = location.hash.replace(/^#\/?/, '').split('/').filter(Boolean);
     window.scrollTo(0, 0);
     if (!parts.length) pageHome();
